@@ -76,7 +76,7 @@ class Submission (object):
     # Allow monkey-patching or other caller-driven reconfig in future?
     content_path_root = '/var/tmp/cfde_deriva_submissions'
     
-    def __init__(self, server, registry, id, dcc_id, archive_url, submitting_user):
+    def __init__(self, server, registry, id, dcc_id, archive_url, submitting_user, globus_https_token=None):
         """Represent a stateful processing flow for a C2M2 submission.
 
         :param server: A DerivaServer binding object where review catalogs are created.
@@ -102,6 +102,7 @@ class Submission (object):
         self.archive_url = archive_url
         self.review_catalog = None
         self.submitting_user = submitting_user
+        self.globus_https_token = globus_https_token
 
         # check filesystem config early to abort ASAP on errors
         # TBD: check permissions for safe service config?
@@ -337,8 +338,7 @@ class Submission (object):
 
     ## utility functions to help with various processing and validation tasks
 
-    @classmethod
-    def retrieve_datapackage(cls, archive_url, download_filename):
+    def retrieve_datapackage(self, archive_url, download_filename):
         """Idempotently stage datapackage content from archive_url into download_filename.
 
         Uses a temporary download name and renames after successful
@@ -347,6 +347,12 @@ class Submission (object):
         """
         if os.path.isfile(download_filename):
             return
+
+        headers = {}
+        if self.globus_https_token:
+            headers['Authorization'] = 'Bearer %s' % self.globus_https_token
+        logger.debug('Fetching remote file %s authenticated? %s' % (archive_url, bool(headers)))
+
 
         fd, tmp_name  = None, None
         try:
@@ -363,7 +369,7 @@ class Submission (object):
             ))
 
             # TBD: replace with appropriate globus-authenticated download
-            r = requests.get(archive_url, stream=True)
+            r = requests.get(archive_url, headers=headers, stream=True)
             r.raise_for_status()
             for chunk in r.iter_content(chunk_size=128*1024):
                 os.write(fd, chunk)
