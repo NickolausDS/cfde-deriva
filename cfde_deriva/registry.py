@@ -2,6 +2,7 @@
 import sys
 import datetime
 import json
+import logging
 from deriva.core import DerivaServer, ErmrestCatalog, get_credential
 from deriva.core.ermrest_model import nochange
 from deriva.core.datapath import ArrayD
@@ -10,6 +11,8 @@ from deriva.core.utils.core_utils import AttrDict
 from . import exception
 from .tableschema import RegistryConfigurator, authn_id
 from .datapackage import CfdeDataPackage, registry_schema_json
+
+logger = logging.getLogger(__name__)
 
 def _attrdict_from_strings(*strings):
     new = AttrDict()
@@ -307,6 +310,7 @@ class Registry (object):
         """
         if not isinstance(id, str):
             raise TypeError('expected id of type str, not %s' % (type(id),))
+        logger.debug(f'fetching datapackage id {id}')
         existing = self.get_datapackage(id)
         changes = {
             k: v
@@ -319,9 +323,11 @@ class Registry (object):
             }.items()
             if v is not nochange and v != existing[k]
         }
+        logger.debug(f'Are there changes? > {bool(changes)}')
         if not changes:
             return
         changes['id'] = id
+        logger.debug(f'Putting to calalog {id}')
         self._catalog.put(
             '/attributegroup/CFDE:datapackage/id;%s' % (','.join([ c for c in changes.keys() if c != 'id']),),
             json=[changes]
