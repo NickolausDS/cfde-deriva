@@ -200,6 +200,7 @@ class Submission (object):
                     terms.cfde_registry_dp_status.bag_valid,
                     terms.cfde_registry_dp_status.check_valid,
             }:
+                logger.debug('STARTING TO VALIDATE BDBAG')
                 self.bdbag_validate(self.content_path)
                 logger.debug('FINISHED VALIDATING BDBAG')
                 self.registry.update_datapackage(self.datapackage_id, status=terms.cfde_registry_dp_status.bag_valid)
